@@ -48,11 +48,34 @@ public:
   std::vector<MachineView> machine_views;
 };
 
+struct TokenTreeNode {
+  int token_id;
+  int parent_id;
+  float prob;
+  int depth;
+  TokenTreeNode(int _token_id, int _parent_id, float _prob, int _depth)
+      : token_id(_token_id), parent_id(_parent_id), prob(_prob), depth(_depth)
+  {
+  }
+};
+
 struct Request {
   BatchConfig::RequestGuid guid;
   int max_sequence_length;
   int initial_len;
+  int beam_width;
+  int beam_depth;
+
   std::vector<BatchConfig::TokenId> tokens;
+  
+  // Beam Trees stores prediction sequences from small models
+  std::vector<TokenTreeNode> beam_tree;
+
+  // Cache the tree send to verify batch
+  std::vector<std::pair<int, int>> verify_tree_input;
+
+  // Cache the committed tokens for the next iteration
+  std::vector<std::pair<int, int>> committed_tokens;
 };
 
 // store the result of beam search
@@ -80,7 +103,12 @@ public:
   using TokenId = BatchConfig::TokenId;
   RequestManager(Tokenizer *tokenizer, bool verbose = false);
   RequestManager();
+
   size_t get_num_processed_requests();
+
+  int add_new_ssm(); // return the id of the new ssm
+  int get_num_ssms(); // return the total number of ssms
+
   RequestGuid register_new_request(std::string const &prompt,
                                    int max_sequence_length);
   RequestGuid register_new_request(std::vector<TokenId> const &prompt,
@@ -116,9 +144,6 @@ public:
       std::vector<std::pair<BatchConfig::TokenId, int>> const
           &outputSerializedTree);
 
-  // TreeVerifyBatchConfig
-  //     convert_beam_to_tree_batch_config(BeamSearchBatchConfig const
-  //     &beam_bc);
 
   static void
       load_tokens_task(Legion::Task const *task,
@@ -139,17 +164,18 @@ private:
   std::mutex request_queue_mutex;
   RequestGuid next_available_guid;
 
-  struct BeamTree beam_trees[BatchConfig::MAX_NUM_REQUESTS];
+  // SSM related
+  int num_of_ssms = 1;
+  std::vector<int> ssm_ids = {0};
 
+  // TODO: Remove those once refactor finished
+  struct BeamTree beam_trees[BatchConfig::MAX_NUM_REQUESTS];
   std::unordered_map<RequestGuid,
                      std::vector<std::pair<BatchConfig::TokenId, int>>>
       dfs_tree_inputs;
-
-  // std::unordered_map<RequestGuid, BeamTree_v2> beam_trees_v2;
-  // TODO: cache config info for Verify/Beam exchange: Beam Width, Beam Depth,
-  // Commited Tokens
   std::unordered_map<RequestGuid, std::vector<std::pair<int, int>>>
       committed_tokens;
+
   // Performance profiling
   size_t num_processed_requests;
 
