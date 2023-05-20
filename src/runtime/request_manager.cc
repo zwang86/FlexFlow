@@ -33,10 +33,10 @@ RequestManager::RequestManager(Tokenizer *_tokenizer, bool _verbose)
     : tokenizer(_tokenizer), verbose(_verbose), next_available_guid(1000000),
       num_processed_requests(0) {}
 
-int RequestManager::add_new_ssm() {
+int RequestManager::register_new_ssm(FFModel &model) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
   int ssm_id = ssm_model_ids.size();
-  ssm_model_ids.push_back(ssm_id);
+  ssm_model_ids.push_back(model);
   num_of_ssms = ssm_model_ids.size();
 
   return ssm_id;
@@ -46,6 +46,12 @@ int RequestManager::get_num_of_ssms() {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
   assert(num_of_ssms == ssm_model_ids.size());
   return ssm_model_ids.size();
+}
+
+FFModel RequestManager::get_ssm_by_id(int ssm_id) {
+  const std::lock_guard<std::mutex> lock(request_queue_mutex);
+  assert(ssm_id < ssm_model_ids.size());
+  return ssm_model_ids.at(ssm_id);
 }
 
 RequestManager::RequestGuid

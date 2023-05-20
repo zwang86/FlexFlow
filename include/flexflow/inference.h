@@ -106,8 +106,9 @@ public:
 
   size_t get_num_processed_requests();
 
-  int add_new_ssm(); // return the id of the new ssm
+  int register_new_ssm(FFModel &model); // return the id of the new ssm
   int get_num_ssms(); // return the total number of ssms
+  FFModel get_ssm_by_id(int id); // return the ssm with the given id
 
   RequestGuid register_new_request(std::string const &prompt,
                                    int max_sequence_length);
@@ -165,8 +166,8 @@ private:
   RequestGuid next_available_guid;
 
   // SSM related
-  int num_of_ssms = 1;
-  std::vector<int> ssm_ids = {0};
+  int num_of_ssms;
+  std::vector<FFModel> ssm_ids;
 
   // TODO: Remove those once refactor finished
   struct BeamTree beam_trees[BatchConfig::MAX_NUM_REQUESTS];
